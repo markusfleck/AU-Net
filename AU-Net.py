@@ -106,11 +106,11 @@ class AUnet(torch.nn.Module):
         self.batchnorm = batchnorm
         
         
-        self.input_adapter_conv = torch.nn.Conv2d(input_dims[0], top_channels // 2, kernel_size = 1)
+        self.input_adapter_conv = torch.nn.Conv2d(input_dims[0], top_channels, kernel_size = 1)
         
         
-        self.down_convs = []
-        in_dims = (top_channels // 2, input_dims[1], input_dims[2]) 
+        self.down_convs = torch.nn.ModuleList([])
+        in_dims = (top_channels, input_dims[1], input_dims[2]) 
         for i in range(self.depth - 1):
             self.down_convs.append(Down_Conv(in_dims, dropout = dropout))
             in_dims = self.down_convs[-1].out_dims
@@ -124,7 +124,7 @@ class AUnet(torch.nn.Module):
         self.connector_conv2 = torch.nn.Conv2d(in_dims[0], in_dims[0], kernel_size = 3, padding = 1)
         
         
-        self.up_convs = []
+        self.up_convs = torch.nn.ModuleList([])
         for i in range(self.depth):
             assert (self.down_convs[-i-1].conv_out_dims[1] == in_dims[1] * 2) or (self.down_convs[-i-1].conv_out_dims[1] == in_dims[1] * 2 + 4)
             pad = self.down_convs[-i-1].conv_out_dims[1] == in_dims[1] * 2 + 4
@@ -167,12 +167,14 @@ class AUnet(torch.nn.Module):
         return x
 
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
 
-img = torch.rand((17, 3, 300, 300))
+img = torch.rand((16, 3, 300, 300), device = device)
 
-for depth in range(4,5): 
-    aunet = AUnet(depth = depth, input_dims = (3, 300, 300), top_channels = 64, out_channels = 3, dropout = 0.1, batchnorm = True)
-    out = aunet(img)
+for depth in range(2,4):
+       
+    aunet = AUnet(depth = depth, input_dims = (3, 300, 300), top_channels = 10, out_channels = 3, dropout = 0.1, batchnorm = True).to(device)
+    out = aunet(img).detach().cpu()
     print('out.shape', out.shape)
 
 
